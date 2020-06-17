@@ -78,7 +78,10 @@ mod integration_tests {
         println!("Address address {:?}", resp.address);
 
         assert_eq!(pkhex, "048ef50054db1b8c5ff9b02640a25463a37ca7d4249da43b4e6f4ea8f7af70daec5e276294642dec9dc28079397d6962cc32d3909e92995167768fbde7250424d9");
-        assert_eq!(resp.address, "cro1n97t35jymgksmh73mh0zj3qx539k3hg4pfhmncake4ssm3z7rreqzkza53");
+        assert_eq!(
+            resp.address,
+            "cro1n97t35jymgksmh73mh0zj3qx539k3hg4pfhmncake4ssm3z7rreqzkza53"
+        );
     }
 
     #[async_test]
@@ -127,7 +130,10 @@ mod integration_tests {
         println!("Address address {:?}", resp.address);
 
         assert_eq!(pkhex, "048ef50054db1b8c5ff9b02640a25463a37ca7d4249da43b4e6f4ea8f7af70daec5e276294642dec9dc28079397d6962cc32d3909e92995167768fbde7250424d9");
-        assert_eq!(resp.address, "cro1n97t35jymgksmh73mh0zj3qx539k3hg4pfhmncake4ssm3z7rreqzkza53");
+        assert_eq!(
+            resp.address,
+            "cro1n97t35jymgksmh73mh0zj3qx539k3hg4pfhmncake4ssm3z7rreqzkza53"
+        );
     }
 
     #[async_test]
