@@ -37,6 +37,8 @@ hex = "0.4"
 serial_test = "0.3"
 env_logger = "0.7"
 futures-await-test = "0.3"
+secp256k1 = "0.17.2"
+blake3 = "0.3.4"
 
 [profile.release]
 overflow-checks = true

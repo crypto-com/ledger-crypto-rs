@@ -131,7 +131,7 @@ impl CryptoApp {
         }
 
         // Last response should contain the answer
-        if response.data.len() != 65 {
+        if response.data.len() < 65 {
             return Err(LedgerError::InvalidSignature);
         }
 
