@@ -20,9 +20,12 @@
 #![deny(missing_docs)]
 
 use ledger_transport::{APDUCommand, APDUErrorCodes, APDUTransport};
-use ledger_zondax_generic::{AppInfo, ChunkPayloadType, DeviceInfo, LedgerAppError, Version};
+use ledger_zondax_generic::{
+    map_apdu_error_description, AppInfo, ChunkPayloadType, DeviceInfo, LedgerAppError, Version,
+};
 use std::str;
 use zx_bip44::BIP44Path;
+
 extern crate hex;
 
 const CLA: u8 = 0x08;
@@ -92,12 +95,18 @@ impl CryptoApp {
         };
 
         let response = self.apdu_transport.exchange(&command).await?;
+        if response.retcode != 0x9000 {
+            return Err(LedgerAppError::AppSpecific(
+                response.retcode,
+                map_apdu_error_description(response.retcode).to_string(),
+            ));
+        }
 
         if response.data.len() < PK_LEN {
             return Err(LedgerAppError::InvalidPK);
         }
 
-        log::debug!("Received response {}", response.data.len());
+        log::info!("Received response {}", response.data.len());
 
         let mut address = Address {
             public_key: [0; PK_LEN],
@@ -113,7 +122,11 @@ impl CryptoApp {
     }
 
     /// Sign a transaction
-    pub async fn sign(&self, path: &BIP44Path, message: &[u8]) -> Result<Signature, LedgerAppError> {
+    pub async fn sign(
+        &self,
+        path: &BIP44Path,
+        message: &[u8],
+    ) -> Result<Signature, LedgerAppError> {
         let serialized_path = path.serialize();
         let start_command = APDUCommand {
             cla: self.cla(),
@@ -123,9 +136,11 @@ impl CryptoApp {
             data: serialized_path,
         };
 
+        log::info!("sign ->");
         let response =
             ledger_zondax_generic::send_chunks(&self.apdu_transport, &start_command, message)
                 .await?;
+        log::info!("sign OK");
 
         if response.data.is_empty() && response.retcode == APDUErrorCodes::NoError as u16 {
             return Err(LedgerAppError::NoSignature);

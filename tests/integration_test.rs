@@ -26,11 +26,14 @@ extern crate ledger_crypto;
 
 #[cfg(test)]
 mod integration_tests {
+    use env_logger::Env;
     use ledger_crypto::{APDUTransport, CryptoApp};
     use zx_bip44::BIP44Path;
 
     fn init_logging() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = env_logger::from_env(Env::default().default_filter_or("info"))
+            .is_test(true)
+            .try_init();
     }
 
     #[tokio::test]
@@ -214,7 +217,6 @@ mod integration_tests {
         secp.verify(&message, &sig, &pk).unwrap();
     }
 
-
     #[tokio::test]
     #[serial]
     async fn sign_unbounded_stake() {
@@ -224,7 +226,10 @@ mod integration_tests {
     #[tokio::test]
     #[serial]
     async fn sign_unjail() {
-        sign_verify("0101010000000000000000bce02627ca9daa2af92412cb9998aa59df12707900000100000000000000").await;
+        sign_verify(
+            "0101010000000000000000bce02627ca9daa2af92412cb9998aa59df12707900000100000000000000",
+        )
+        .await;
     }
 
     #[tokio::test]
@@ -237,5 +242,30 @@ mod integration_tests {
     #[serial]
     async fn sign_withdraw_unbonded() {
         sign_verify("00020000000000000000040009cbc2ce0dd314d5a7c658c866a4faf2d8510c6912313859eee908322bd7daf5e803000000000000010000000000000000000004036b3e5b7744134ac0556ace88b098a057014afb82701b1b1ba49ea04b09fea29b000100000000000000").await;
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn sign_twice() {
+        init_logging();
+
+        let txstr1 = "010000410afb0ccf51aefd111bceafb6c298acd4decaf60000000000000000e803000000000000002a0100000000000000";
+        let txstr2 =
+            "0101010000000000000000bce02627ca9daa2af92412cb9998aa59df12707900000100000000000000";
+        let blob1 = hex::decode(txstr1).unwrap();
+        let blob2 = hex::decode(txstr2).unwrap();
+        let path = BIP44Path::from_string("m/44'/394'/0'/0/5").unwrap();
+
+        let transport = APDUTransport {
+            transport_wrapper: ledger::TransportNativeHID::new().unwrap(),
+        };
+        let app = CryptoApp::new(transport);
+
+        // Sign with device
+        let sig_response1 = app.sign(&path, &blob1).await;
+        let sig_response2 = app.sign(&path, &blob2).await;
+
+        assert!(sig_response1.is_ok());
+        assert!(sig_response2.is_ok());
     }
 }
