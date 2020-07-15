@@ -20,9 +20,10 @@
 #![deny(missing_docs)]
 
 use ledger_transport::{APDUCommand, APDUErrorCodes, APDUTransport};
-use ledger_zondax_generic::{AppInfo, ChunkPayloadType, DeviceInfo, LedgerError, Version};
+use ledger_zondax_generic::{AppInfo, ChunkPayloadType, DeviceInfo, LedgerAppError, Version};
 use std::str;
 use zx_bip44::BIP44Path;
+extern crate hex;
 
 const CLA: u8 = 0x08;
 const INS_GET_ADDR_SECP256K1: u8 = 0x01;
@@ -59,17 +60,17 @@ impl CryptoApp {
     }
 
     /// Retrieve the app version
-    pub async fn get_version(&self) -> Result<Version, LedgerError> {
+    pub async fn get_version(&self) -> Result<Version, LedgerAppError> {
         ledger_zondax_generic::get_version(self.cla(), &self.apdu_transport).await
     }
 
     /// Retrieve the app info
-    pub async fn get_app_info(&self) -> Result<AppInfo, LedgerError> {
+    pub async fn get_app_info(&self) -> Result<AppInfo, LedgerAppError> {
         ledger_zondax_generic::get_app_info(&self.apdu_transport).await
     }
 
     /// Retrieve the device info
-    pub async fn get_device_info(&self) -> Result<DeviceInfo, LedgerError> {
+    pub async fn get_device_info(&self) -> Result<DeviceInfo, LedgerAppError> {
         ledger_zondax_generic::get_device_info(&self.apdu_transport).await
     }
 
@@ -78,7 +79,7 @@ impl CryptoApp {
         &self,
         path: &BIP44Path,
         require_confirmation: bool,
-    ) -> Result<Address, LedgerError> {
+    ) -> Result<Address, LedgerAppError> {
         let serialized_path = path.serialize();
         let p1 = if require_confirmation { 1 } else { 0 };
 
@@ -93,7 +94,7 @@ impl CryptoApp {
         let response = self.apdu_transport.exchange(&command).await?;
 
         if response.data.len() < PK_LEN {
-            return Err(LedgerError::InvalidPK);
+            return Err(LedgerAppError::InvalidPK);
         }
 
         log::debug!("Received response {}", response.data.len());
@@ -105,14 +106,14 @@ impl CryptoApp {
 
         address.public_key.copy_from_slice(&response.data[..65]);
         address.address = str::from_utf8(&response.data[65..])
-            .map_err(|_e| LedgerError::Utf8)?
+            .map_err(|_e| LedgerAppError::Utf8)?
             .to_owned();
 
         Ok(address)
     }
 
     /// Sign a transaction
-    pub async fn sign(&self, path: &BIP44Path, message: &[u8]) -> Result<Signature, LedgerError> {
+    pub async fn sign(&self, path: &BIP44Path, message: &[u8]) -> Result<Signature, LedgerAppError> {
         let serialized_path = path.serialize();
         let start_command = APDUCommand {
             cla: self.cla(),
@@ -127,13 +128,15 @@ impl CryptoApp {
                 .await?;
 
         if response.data.is_empty() && response.retcode == APDUErrorCodes::NoError as u16 {
-            return Err(LedgerError::NoSignature);
+            return Err(LedgerAppError::NoSignature);
         }
 
         // Last response should contain the answer
         if response.data.len() < 65 {
-            return Err(LedgerError::InvalidSignature);
+            return Err(LedgerAppError::InvalidSignature);
         }
+
+        log::info!("{}", hex::encode(&response.data[..]));
 
         let mut sig: Signature = [0u8; 65];
         sig.copy_from_slice(&response.data[..65]);

@@ -37,4 +37,4 @@ pub use ledger_transport::{APDUAnswer, APDUCommand, APDUErrorCodes, APDUTranspor
 
 /// Ledger app
 pub use app::*;
-pub use ledger_zondax_generic::LedgerError;
+pub use ledger_zondax_generic::LedgerAppError;
