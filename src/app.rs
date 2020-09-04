@@ -19,7 +19,7 @@
 #![deny(unused_import_braces, unused_qualifications)]
 #![deny(missing_docs)]
 
-use ledger_transport::{APDUCommand, APDUErrorCodes, APDUTransport};
+use ledger_transport::{APDUCommand, APDUErrorCodes, APDUTransport, Exchange};
 use ledger_zondax_generic::{
     map_apdu_error_description, AppInfo, ChunkPayloadType, DeviceInfo, LedgerAppError, Version,
 };
@@ -35,8 +35,8 @@ const INS_SIGN_SECP256K1: u8 = 0x02;
 const PK_LEN: usize = 65;
 
 /// Ledger App
-pub struct CryptoApp {
-    apdu_transport: APDUTransport,
+pub struct CryptoApp<T: Exchange> {
+    apdu_transport: APDUTransport<T>,
 }
 
 type PublicKey = [u8; PK_LEN];
@@ -52,9 +52,9 @@ pub struct Address {
 
 type Signature = [u8; 65];
 
-impl CryptoApp {
+impl<T: Exchange> CryptoApp<T> {
     /// Connect to the Ledger App
-    pub fn new(apdu_transport: APDUTransport) -> Self {
+    pub fn new(apdu_transport: APDUTransport<T>) -> Self {
         CryptoApp { apdu_transport }
     }
 

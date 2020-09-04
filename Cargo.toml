@@ -26,9 +26,9 @@ thiserror = "1.0.20"
 log="0.4.8"
 
 zx-bip44 = { git = "https://github.com/Zondax/blockchain-tools-rs" }
-ledger-zondax-generic = { git = "https://github.com/Zondax/ledger-rs", branch="master" }
-ledger-transport = { git = "https://github.com/Zondax/ledger-rs", branch="master" }
-ledger-transport-hid = { git = "https://github.com/Zondax/ledger-rs", branch="master" }
+ledger-zondax-generic = { git = "https://github.com/crypto-com/ledger-rs", rev="8d94ced5cdd9dc3255bf0e6e775e4ec397b61f0d" }
+ledger-transport = { git = "https://github.com/crypto-com/ledger-rs", rev="8d94ced5cdd9dc3255bf0e6e775e4ec397b61f0d" }
+ledger-transport-hid = { git = "https://github.com/crypto-com/ledger-rs", rev="8d94ced5cdd9dc3255bf0e6e775e4ec397b61f0d" }
 hex = "0.4"
 
 [dev-dependencies]
