@@ -28,11 +28,12 @@ use zx_bip44::BIP44Path;
 
 extern crate hex;
 
-const CLA: u8 = 0x08;
-const INS_GET_ADDR_SECP256K1: u8 = 0x01;
+const CLA: u8 = 0x55;
+const INS_GET_ADDR_SECP256K1: u8 = 0x04;
 const INS_SIGN_SECP256K1: u8 = 0x02;
 
-const PK_LEN: usize = 65;
+const PK_LEN: usize = 33;
+const SIGNATURE_LEN: usize = 65;
 
 /// Ledger App
 pub struct CryptoApp {
@@ -43,6 +44,7 @@ type PublicKey = [u8; PK_LEN];
 
 /// Kusama address (includes pubkey and the corresponding ss58 address)
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct Address {
     /// Public Key
     pub public_key: PublicKey,
@@ -50,7 +52,7 @@ pub struct Address {
     pub address: String,
 }
 
-type Signature = [u8; 65];
+type Signature = [u8; SIGNATURE_LEN];
 
 impl CryptoApp {
     /// Connect to the Ledger App
@@ -80,10 +82,17 @@ impl CryptoApp {
     /// Retrieves the public key and address
     pub async fn get_address(
         &self,
+        acc_address_prefix: &str,
         path: &BIP44Path,
         require_confirmation: bool,
     ) -> Result<Address, LedgerAppError> {
-        let serialized_path = path.serialize();
+        let mut data = vec![];
+        let acc_address_prefix_len = acc_address_prefix.as_bytes().len();
+        data.push(acc_address_prefix_len as u8);
+        let mut acc_address_prefix_raw = acc_address_prefix.as_bytes().to_vec();
+        data.append(&mut acc_address_prefix_raw);
+        let mut serialized_path = path.serialize();
+        data.append(&mut serialized_path);
         let p1 = if require_confirmation { 1 } else { 0 };
 
         let command = APDUCommand {
@@ -91,8 +100,10 @@ impl CryptoApp {
             ins: INS_GET_ADDR_SECP256K1,
             p1,
             p2: 0x00,
-            data: serialized_path,
+            data,
         };
+
+        log::debug!("apdu command: {:?}", command);
 
         let response = self.apdu_transport.exchange(&command).await?;
         if response.retcode != 0x9000 {
@@ -102,22 +113,21 @@ impl CryptoApp {
             ));
         }
 
+        log::info!("Received response {}", response.data.len());
         if response.data.len() < PK_LEN {
             return Err(LedgerAppError::InvalidPK);
         }
-
-        log::info!("Received response {}", response.data.len());
 
         let mut address = Address {
             public_key: [0; PK_LEN],
             address: "".to_string(),
         };
 
-        address.public_key.copy_from_slice(&response.data[..65]);
-        address.address = str::from_utf8(&response.data[65..])
+        address.public_key.copy_from_slice(&response.data[..PK_LEN]);
+        address.address = str::from_utf8(&response.data[PK_LEN..])
             .map_err(|_e| LedgerAppError::Utf8)?
             .to_owned();
-
+        log::debug!("address: {:?}", address.address);
         Ok(address)
     }
 
@@ -147,14 +157,14 @@ impl CryptoApp {
         }
 
         // Last response should contain the answer
-        if response.data.len() < 65 {
+        if response.data.len() < SIGNATURE_LEN {
             return Err(LedgerAppError::InvalidSignature);
         }
 
         log::info!("{}", hex::encode(&response.data[..]));
 
-        let mut sig: Signature = [0u8; 65];
-        sig.copy_from_slice(&response.data[..65]);
+        let mut sig: Signature = [0u8; SIGNATURE_LEN];
+        sig.copy_from_slice(&response.data[..SIGNATURE_LEN]);
 
         Ok(sig)
     }
